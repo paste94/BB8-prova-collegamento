@@ -11,7 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
@@ -33,9 +33,6 @@ public class BluetoothConnectionActivity extends AppCompatActivity {
     private int LOCATION_PERMISSIONS_RCODE = 2;
     private int LOCATION_ENABLE_RCODE = 3;
 
-    private TextView btStatus;
-    private TextView lcStatus;
-
     private Boolean btIsOn = false;
     private Boolean lcIsOn = false;
 
@@ -45,9 +42,6 @@ public class BluetoothConnectionActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bluetooth);
-
-        btStatus = (TextView) findViewById(R.id.btstatus);
-        lcStatus = (TextView) findViewById(R.id.lcstatus);
 
         // Location
         requestLocationPermissions();
@@ -72,13 +66,53 @@ public class BluetoothConnectionActivity extends AppCompatActivity {
             } else{
                 if(shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)
                         && shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION)){
-                    lcStatus.setText("Location services permissions required to use this app");
                     lcIsOn = false;
                 }
                 requestPermissions(new String[] {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, LOCATION_PERMISSIONS_RCODE);
             }
         } else {
             enableLocation();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults){
+        if(requestCode == LOCATION_PERMISSIONS_RCODE){
+            if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                enableLocation();
+            } else {
+                Toast.makeText(getApplicationContext(), "Location services permissions required to use this app", Toast.LENGTH_LONG).show();
+            }
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkToContinue();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == BLUETOOTH_ENABLE_RCODE){
+            if(resultCode == RESULT_CANCELED){
+                Toast.makeText(getApplicationContext(), "Bluetooth must be enabled to continue", Toast.LENGTH_LONG).show();
+                btIsOn = false;
+            }else{
+                btIsOn = true;
+                checkToContinue();
+            }
+        } else if (requestCode == LOCATION_ENABLE_RCODE){
+            final LocationManager mLocationManager = (LocationManager) getSystemService( Context.LOCATION_SERVICE );
+            if (mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                lcIsOn = true;
+                checkToContinue();
+            }else{
+                Toast.makeText(getApplicationContext(), "Location must be enabled to continue", Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -96,9 +130,10 @@ public class BluetoothConnectionActivity extends AppCompatActivity {
          * Restituisce true se il GPS è attivo, false altrimenti
          */
         if (!mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            //lcStatus.setText("Location: OFF");
             displayLocationSettingsRequest(getApplicationContext());
         }else{
-            lcStatus.setText("Location: ON");
+            //lcStatus.setText("Location: ON");
             lcIsOn = true;
         }
     }
@@ -106,10 +141,10 @@ public class BluetoothConnectionActivity extends AppCompatActivity {
     // Chiede all'utente di attivare il bluetooth, se acconsente lo attiva automaticamente
     private void enableBluetooth(){
         if(bluetoothAdapter == null){
-            btStatus.setText(R.string.bluetooth_not_found);
+            //btStatus.setText(R.string.bluetooth_not_found);
         } else { //check the status and set the button text accordingly
             if (!bluetoothAdapter.isEnabled()) {
-                btStatus.setText(R.string.bluetooth_is_currently_switched_off);
+                //btStatus.setText(R.string.bluetooth_is_currently_switched_off);
                 Intent bluetoothIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
 
                 /* Lancia l'activity BluetoothActivity.
@@ -160,6 +195,8 @@ public class BluetoothConnectionActivity extends AppCompatActivity {
                 switch (status.getStatusCode()) {
                     case LocationSettingsStatusCodes.SUCCESS:
                         //Toast.makeText(getApplicationContext(), "All location settings are satisfied.", Toast.LENGTH_SHORT).show();
+                        //lcStatus.setText("Location: ON");
+                        //lcIsOn = true;
                         break;
                     case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
                         //Toast.makeText(getApplicationContext(), "Location settings are not satisfied. Show the user a dialog to upgrade location settings", Toast.LENGTH_SHORT).show();
